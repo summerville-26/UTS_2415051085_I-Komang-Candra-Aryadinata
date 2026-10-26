@@ -11,6 +11,6 @@ void main() {
     expect(find.text('Halo, Pembaca!'), findsOneWidget);
     expect(find.text('Jelajahi BookNest'), findsOneWidget);
     expect(find.text('Katalog Buku'), findsOneWidget);
-    expect(find.text('Perpustakaan'), findsOneWidget);
+    expect(find.text('Perpustakaan'), findsNWidgets(2));
   });
 }
