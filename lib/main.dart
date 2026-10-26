@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'config/supabase_config.dart';
 import 'config/theme.dart';
 import 'providers/book_api_provider.dart';
 import 'providers/reading_list_provider.dart';
@@ -10,7 +12,28 @@ import 'screens/home_screen.dart';
 import 'screens/my_library_screen.dart';
 import 'services/open_library_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Inisialisasi Supabase dari file konfigurasi.
+  await Supabase.initialize(
+    url: SupabaseConfig.supabaseUrl,
+    publishableKey: SupabaseConfig.supabasePublishableKey,
+  );
+
+  // Membuat sesi anonim jika belum ada sesi aktif.
+  try {
+    if (Supabase.instance.client.auth.currentSession == null) {
+      await Supabase.instance.client.auth.signInAnonymously();
+    }
+  } catch (error, stackTrace) {
+    debugPrint('Gagal membuat sesi anonim Supabase: $error');
+    debugPrintStack(stackTrace: stackTrace);
+
+    runApp(const SupabaseConnectionErrorApp());
+    return;
+  }
+
   runApp(
     MultiProvider(
       providers: [
@@ -24,6 +47,31 @@ void main() {
       child: const BookNestApp(),
     ),
   );
+}
+
+/// Ditampilkan jika Supabase gagal membuat sesi anonim.
+class SupabaseConnectionErrorApp extends StatelessWidget {
+  const SupabaseConnectionErrorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Tidak dapat membuat sesi anonim Supabase.\n\n'
+              'Periksa koneksi internet, URL dan Publishable Key, '
+              'serta pengaturan Anonymous Sign-Ins di Supabase.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Widget root aplikasi BookNest.
@@ -41,7 +89,7 @@ class BookNestApp extends StatelessWidget {
   }
 }
 
-/// Navigasi utama.
+/// Navigasi utama BookNest.
 /// State tab tetap lokal, sedangkan data dikelola oleh Provider.
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
