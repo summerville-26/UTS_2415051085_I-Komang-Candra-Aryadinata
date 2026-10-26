@@ -2,15 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'config/theme.dart';
+import 'providers/book_api_provider.dart';
 import 'providers/reading_list_provider.dart';
-import 'screens/home_screen.dart';
+import 'repositories/book_repository.dart';
 import 'screens/book_catalog_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/my_library_screen.dart';
+import 'services/open_library_service.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ReadingListProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ReadingListProvider()),
+        ChangeNotifierProvider(
+          create: (_) => BookApiProvider(
+            repository: BookRepository(service: OpenLibraryService()),
+          ),
+        ),
+      ],
       child: const BookNestApp(),
     ),
   );
@@ -32,7 +42,7 @@ class BookNestApp extends StatelessWidget {
 }
 
 /// Navigasi utama.
-/// State tab tetap lokal, sedangkan daftar bacaan dikelola oleh Provider.
+/// State tab tetap lokal, sedangkan data dikelola oleh Provider.
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
 

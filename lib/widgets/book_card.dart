@@ -4,7 +4,7 @@ import '../config/theme.dart';
 import '../models/book.dart';
 
 /// Kartu buku yang digunakan di grid katalog.
-/// Menampilkan ikon buku, judul, penulis, dan kategori.
+/// Menampilkan sampul, judul, penulis, dan kategori.
 class BookCard extends StatelessWidget {
   const BookCard({
     super.key,
@@ -24,6 +24,61 @@ class BookCard extends StatelessWidget {
 
   /// Dipanggil saat kartu ditekan (membuka BookDetailScreen).
   final VoidCallback onOpen;
+
+  /// Tampilan pengganti jika sampul tidak tersedia atau gagal dimuat.
+  Widget _buildCoverFallback() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: book.color,
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: Icon(book.icon, color: primaryBlue, size: 43),
+    );
+  }
+
+  /// Menampilkan sampul dari Open Library jika tersedia.
+  Widget _buildBookCover() {
+    final coverUrl = book.coverUrl;
+
+    if (coverUrl == null || coverUrl.trim().isEmpty) {
+      return _buildCoverFallback();
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(13),
+      child: SizedBox(
+        width: double.infinity,
+        height: double.infinity,
+        child: Image.network(
+          coverUrl,
+          fit: BoxFit.contain,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) {
+              return child;
+            }
+
+            return Container(
+              color: book.color,
+              alignment: Alignment.center,
+              child: const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: primaryBlue,
+                ),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            return _buildCoverFallback();
+          },
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,23 +102,15 @@ class BookCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ─── Area sampul buku ────────────────────────────────────────────
+            // Area sampul buku
             Expanded(
               child: Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: book.color,
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    child: Icon(book.icon, color: primaryBlue, size: 43),
-                  ),
-                ],
+                children: [Positioned.fill(child: _buildBookCover())],
               ),
             ),
             const SizedBox(height: 10),
-            // ─── Info buku ───────────────────────────────────────────────────
+
+            // Informasi buku
             Text(
               book.title,
               maxLines: 2,

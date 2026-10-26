@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../config/theme.dart';
 import '../models/book.dart';
 import '../models/saved_book.dart';
+import '../providers/book_api_provider.dart';
 import '../widgets/book_grid.dart';
 import '../widgets/search_field.dart';
 import '../widgets/app_error_view.dart';
 import 'book_detail_screen.dart';
 
-/// Layar katalog buku.
-///
-/// Menampilkan seluruh koleksi buku dengan pencarian langsung.
-/// Data buku berasal dari [sampleBooks] — akan diganti dengan
-/// Open Library API pada Milestone 8.
+/// Katalog buku yang mengambil data dari Open Library API.
 class BookCatalogScreen extends StatefulWidget {
   const BookCatalogScreen({
     super.key,
@@ -32,19 +30,45 @@ class BookCatalogScreen extends StatefulWidget {
 }
 
 class _BookCatalogScreenState extends State<BookCatalogScreen> {
+  final TextEditingController _searchController = TextEditingController();
   String _query = '';
+  bool _initialFetchStarted = false;
 
-  List<Book> get _filteredBooks {
-    if (_query.trim().isEmpty) return sampleBooks;
-    final q = _query.toLowerCase();
-    return sampleBooks
-        .where(
-          (book) =>
-              book.title.toLowerCase().contains(q) ||
-              book.author.toLowerCase().contains(q) ||
-              book.category.toLowerCase().contains(q),
-        )
-        .toList();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_initialFetchStarted) {
+      _initialFetchStarted = true;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        final provider = context.read<BookApiProvider>();
+        if (provider.books.isEmpty &&
+            !provider.isLoading &&
+            provider.errorMessage == null) {
+          provider.fetchBooks(query: 'fiction');
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _searchBooks(String value) {
+    setState(() => _query = value);
+
+    final query = value.trim();
+    if (query.isEmpty) {
+      context.read<BookApiProvider>().fetchBooks(query: 'fiction');
+    } else {
+      context.read<BookApiProvider>().searchBooks(query);
+    }
   }
 
   void _openDetail(Book book) {
@@ -63,7 +87,8 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final books = _filteredBooks;
+    final apiProvider = context.watch<BookApiProvider>();
+    final books = apiProvider.books;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -80,7 +105,6 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ─── Header ──────────────────────────────────────────────
                   const Text(
                     'Book Catalog',
                     style: TextStyle(
@@ -95,41 +119,52 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
                     style: TextStyle(color: secondaryText),
                   ),
                   const SizedBox(height: 22),
-
-                  // ─── Search field ─────────────────────────────────────────
                   SearchField(
                     hintText: 'Cari judul, penulis, kategori...',
-                    onChanged: (value) => setState(() => _query = value),
+                    onChanged: _searchBooks,
                   ),
                   const SizedBox(height: 24),
-
-                  // ─── Jumlah hasil ─────────────────────────────────────────
-                  Text(
-                    _query.isEmpty
-                        ? '${books.length} buku tersedia'
-                        : '${books.length} buku ditemukan',
-                    style: const TextStyle(
-                      color: secondaryText,
-                      fontWeight: FontWeight.w600,
+                  if (apiProvider.isLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: LinearProgressIndicator(),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // ─── Grid buku / empty state ──────────────────────────────
-                  if (books.isEmpty)
-                    EmptyStateView(
-                      title: 'Buku tidak ditemukan',
-                      message:
-                          'Tidak ada buku yang cocok dengan "$_query".\nCoba kata kunci yang berbeda.',
-                      icon: Icons.search_off_rounded,
-                    )
-                  else
-                    BookGrid(
-                      books: books,
-                      savedBooks: widget.savedBooks,
-                      onQuickSave: widget.onQuickSave,
-                      onCardTap: _openDetail,
+                  if (apiProvider.errorMessage != null) ...[
+                    AppErrorView(
+                      message: apiProvider.errorMessage!,
+                      onRetry: () => apiProvider.fetchBooks(
+                        query: _query.trim().isEmpty ? 'fiction' : _query,
+                      ),
                     ),
+                  ] else ...[
+                    Text(
+                      apiProvider.isLoading
+                          ? 'Memuat buku...'
+                          : _query.trim().isEmpty
+                          ? '${books.length} buku tersedia'
+                          : '${books.length} buku ditemukan',
+                      style: const TextStyle(
+                        color: secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    if (!apiProvider.isLoading && books.isEmpty)
+                      EmptyStateView(
+                        title: 'Buku tidak ditemukan',
+                        message: _query.trim().isEmpty
+                            ? 'Belum ada data buku yang tersedia.'
+                            : 'Tidak ada buku yang cocok dengan "$_query".\nCoba kata kunci yang berbeda.',
+                        icon: Icons.search_off_rounded,
+                      )
+                    else if (books.isNotEmpty)
+                      BookGrid(
+                        books: books,
+                        savedBooks: widget.savedBooks,
+                        onQuickSave: widget.onQuickSave,
+                        onCardTap: _openDetail,
+                      ),
+                  ],
                 ],
               ),
             ),
