@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Merepresentasikan buku yang disimpan pengguna ke daftar bacaan pribadi.
-///
-/// ID menggunakan timestamp sementara — akan diganti UUID dari Supabase pada Milestone 9.
-/// Field [color] dan [icon] dari data lokal; akan digantikan [coverUrl] setelah API aktif.
+/// Merepresentasikan buku yang disimpan pengguna.
 class SavedBook {
   SavedBook({
     required this.id,
@@ -18,41 +15,23 @@ class SavedBook {
     this.rating,
     this.notes,
     DateTime? createdAt,
+    this.completedAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
-  /// ID unik. Saat ini berupa timestamp string; akan berupa UUID Supabase pada Milestone 9.
   final String id;
-
   final String title;
   final String author;
-
-  /// URL sampul dari Open Library — diisi pada Milestone 8.
   final String? coverUrl;
-
-  /// Key buku dari Open Library API — diisi pada Milestone 8.
   final String? openLibraryKey;
-
   final String? category;
-
-  /// Warna kartu dari data lokal. Dipertahankan untuk tampilan library.
   final Color? color;
-
-  /// Ikon dari data lokal. Dipertahankan untuk tampilan library.
   final IconData? icon;
-
-  /// Status membaca. Salah satu dari [statusWantToRead], [statusReading], [statusCompleted].
   final String status;
-
-  /// Rating 1.0–5.0, atau null jika belum dirating.
   final double? rating;
-
-  /// Catatan pribadi pengguna.
   final String? notes;
-
-  /// Waktu pertama kali buku disimpan.
   final DateTime createdAt;
+  final DateTime? completedAt;
 
-  // ─── Konstanta Status ─────────────────────────────────────────────────────
   static const String statusWantToRead = 'want_to_read';
   static const String statusReading = 'reading';
   static const String statusCompleted = 'completed';
@@ -63,7 +42,60 @@ class SavedBook {
     statusCompleted,
   ];
 
-  /// Label ramah pengguna untuk setiap status.
+  /// Membaca data buku dari baris Supabase.
+  factory SavedBook.fromJson(Map<String, dynamic> json) {
+    return SavedBook(
+      id: json['id'].toString(),
+      title: json['title'] as String? ?? '',
+      author: json['author'] as String? ?? '',
+      coverUrl: json['cover_url'] as String?,
+      openLibraryKey: json['open_library_key'] as String?,
+      category: json['category'] as String?,
+      status: json['status'] as String? ?? statusWantToRead,
+      rating: json['rating'] == null
+          ? null
+          : (json['rating'] as num).toDouble(),
+      notes: json['notes'] as String?,
+      createdAt: json['created_at'] == null
+          ? DateTime.now()
+          : DateTime.parse(json['created_at'] as String).toLocal(),
+      completedAt: json['completed_at'] == null
+          ? null
+          : DateTime.parse(json['completed_at'] as String).toLocal(),
+    );
+  }
+
+  /// Data untuk INSERT. ID dibuat oleh Supabase.
+  Map<String, dynamic> toInsertJson(String userId) {
+    return {
+      'user_id': userId,
+      'title': title,
+      'author': author,
+      'cover_url': coverUrl,
+      'open_library_key': openLibraryKey,
+      'category': category,
+      'status': status,
+      'rating': rating,
+      'notes': notes,
+      'completed_at': completedAt?.toUtc().toIso8601String(),
+    };
+  }
+
+  /// Data yang dapat diperbarui pada baris buku.
+  Map<String, dynamic> toUpdateJson() {
+    return {
+      'title': title,
+      'author': author,
+      'cover_url': coverUrl,
+      'open_library_key': openLibraryKey,
+      'category': category,
+      'status': status,
+      'rating': rating,
+      'notes': notes,
+      'completed_at': completedAt?.toUtc().toIso8601String(),
+    };
+  }
+
   static String statusLabel(String status) {
     switch (status) {
       case statusReading:
@@ -75,7 +107,6 @@ class SavedBook {
     }
   }
 
-  /// Warna badge untuk setiap status.
   static Color statusColor(String status) {
     switch (status) {
       case statusReading:
@@ -87,7 +118,6 @@ class SavedBook {
     }
   }
 
-  /// Ikon badge untuk setiap status.
   static IconData statusIcon(String status) {
     switch (status) {
       case statusReading:
@@ -99,12 +129,13 @@ class SavedBook {
     }
   }
 
-  /// Mengembalikan salinan objek dengan status, rating, dan catatan yang diperbarui.
   SavedBook copyWithUpdated({
     required String status,
     double? rating,
     String? notes,
   }) {
+    final nowCompleted = status == statusCompleted;
+
     return SavedBook(
       id: id,
       title: title,
@@ -115,9 +146,12 @@ class SavedBook {
       color: color,
       icon: icon,
       status: status,
-      rating: rating,
-      notes: notes,
+      rating: rating ?? this.rating,
+      notes: notes ?? this.notes,
       createdAt: createdAt,
+      completedAt: nowCompleted
+          ? (this.status == statusCompleted ? completedAt : DateTime.now())
+          : null,
     );
   }
 }
