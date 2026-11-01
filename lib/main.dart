@@ -12,6 +12,7 @@ import 'screens/home_screen.dart';
 import 'screens/my_library_screen.dart';
 import 'services/open_library_service.dart';
 import 'providers/reading_goal_provider.dart';
+import 'providers/user_profile_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +47,11 @@ Future<void> main() async {
           create: (_) => BookApiProvider(
             repository: BookRepository(service: OpenLibraryService()),
           ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) =>
+              UserProfileProvider(client: Supabase.instance.client)
+                ..loadProfile(),
         ),
       ],
       child: const BookNestApp(),

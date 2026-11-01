@@ -3,8 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../config/theme.dart';
 import '../models/saved_book.dart';
-import '../providers/reading_goal_provider.dart';
 import '../models/reading_goal.dart';
+import '../providers/reading_goal_provider.dart';
+import '../providers/user_profile_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
@@ -95,12 +96,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'Nov',
       'Des',
     ];
-
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
+  Future<void> _pickDate({required bool isStart}) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: isStart ? _startDate : _endDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      if (isStart) {
+        _startDate = DateTime(picked.year, picked.month, picked.day);
+        if (_endDate.isBefore(_startDate)) {
+          _endDate = _startDate.add(const Duration(days: 6));
+        }
+      } else {
+        _endDate = DateTime(picked.year, picked.month, picked.day);
+      }
+    });
+  }
+
   Future<void> _editName() async {
-    _nameController.text = _name;
+    final profileProvider = context.read<UserProfileProvider>();
+
+    _nameController.text = profileProvider.profile?.name ?? _name;
 
     final result = await showDialog<String>(
       context: context,
@@ -114,7 +138,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             labelText: 'Nama pengguna',
             border: OutlineInputBorder(),
           ),
-          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
+          onSubmitted: (value) {
+            Navigator.pop(dialogContext, value.trim());
+          },
         ),
         actions: [
           TextButton(
@@ -122,8 +148,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text('Batal'),
           ),
           FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, _nameController.text.trim()),
+            onPressed: () {
+              Navigator.pop(dialogContext, _nameController.text.trim());
+            },
             child: const Text('Simpan'),
           ),
         ],
@@ -137,13 +164,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
-    setState(() => _name = result);
-    widget.onSaveName?.call(result);
-    _showMessage('Nama pengguna berhasil diperbarui.');
+    final success = await profileProvider.saveProfile(
+      name: result,
+      about: profileProvider.profile?.about ?? _about,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() => _name = result);
+      widget.onSaveName?.call(result);
+      _showMessage('Nama pengguna berhasil disimpan.');
+    } else {
+      _showMessage(
+        profileProvider.errorMessage ?? 'Gagal menyimpan nama pengguna.',
+      );
+    }
   }
 
   Future<void> _editAbout() async {
-    _aboutController.text = _about;
+    final profileProvider = context.read<UserProfileProvider>();
+
+    _aboutController.text = profileProvider.profile?.about ?? _about;
 
     final result = await showDialog<String>(
       context: context,
@@ -167,8 +209,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text('Batal'),
           ),
           FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, _aboutController.text.trim()),
+            onPressed: () {
+              Navigator.pop(dialogContext, _aboutController.text.trim());
+            },
             child: const Text('Simpan'),
           ),
         ],
@@ -177,35 +220,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (!mounted || result == null) return;
 
-    setState(() => _about = result);
-    widget.onSaveAbout?.call(result);
-    _showMessage('Tentang Saya berhasil diperbarui.');
-  }
-
-  Future<void> _pickDate({required bool isStart}) async {
-    final initial = isStart ? _startDate : _endDate;
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-      helpText: isStart ? 'Pilih tanggal mulai' : 'Pilih tanggal selesai',
+    final success = await profileProvider.saveProfile(
+      name: profileProvider.profile?.name ?? _name,
+      about: result,
     );
 
-    if (!mounted || picked == null) return;
+    if (!mounted) return;
 
-    setState(() {
-      if (isStart) {
-        _startDate = DateTime(picked.year, picked.month, picked.day);
-
-        if (_endDate.isBefore(_startDate)) {
-          _endDate = _startDate;
-        }
-      } else {
-        _endDate = DateTime(picked.year, picked.month, picked.day);
-      }
-    });
+    if (success) {
+      setState(() => _about = result);
+      widget.onSaveAbout?.call(result);
+      _showMessage('Tentang Saya berhasil disimpan.');
+    } else {
+      _showMessage(
+        profileProvider.errorMessage ?? 'Gagal menyimpan deskripsi profil.',
+      );
+    }
   }
 
   Future<void> _createGoal() async {
@@ -742,6 +772,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final profileProvider = context.watch<UserProfileProvider>();
+    final profile = profileProvider.profile;
+    final currentName = profile?.name ?? _name;
+    final currentAbout = profile?.about ?? _about;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
       appBar: AppBar(
@@ -776,7 +811,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Flexible(
                             child: Text(
-                              _name.isEmpty ? 'Nama Pengguna' : _name,
+                              currentName.isEmpty
+                                  ? 'Nama Pengguna'
+                                  : currentName,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 22,
@@ -826,13 +863,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          _about.isEmpty
+                          currentAbout.isEmpty
                               ? 'Tambahkan sedikit informasi tentang diri, '
                                     'minat, atau buku favoritmu.'
-                              : _about,
+                              : currentAbout,
                           style: TextStyle(
                             height: 1.5,
-                            color: _about.isEmpty ? secondaryText : darkText,
+                            color: currentAbout.isEmpty
+                                ? secondaryText
+                                : darkText,
                           ),
                         ),
                       ),
