@@ -43,7 +43,6 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   Future<void> _loadDescription() async {
     final book = widget.book;
 
-    // Buku lokal tetap menggunakan deskripsi yang sudah dimilikinya.
     if (book.openLibraryKey == null) {
       if (mounted) {
         setState(() {
@@ -64,18 +63,14 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       final description = await _service.fetchWorkDescription(
         book.openLibraryKey,
       );
-
       if (!mounted) return;
-
       setState(() {
         _description = description;
         _isLoadingDescription = false;
       });
     } catch (error) {
       debugPrint('Gagal mengambil deskripsi buku: $error');
-
       if (!mounted) return;
-
       setState(() {
         _description = null;
         _isLoadingDescription = false;
@@ -92,9 +87,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
   SavedBook? get _savedBook {
     for (final saved in widget.savedBooks) {
-      if (saved.title == widget.book.title) {
-        return saved;
-      }
+      if (saved.title == widget.book.title) return saved;
     }
     return null;
   }
@@ -108,13 +101,23 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
     if (result != null) {
       widget.onAddBook(result);
-
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('"${widget.book.title}" ditambahkan ke koleksi.'),
-          backgroundColor: const Color(0xFF16A34A),
+          content: Row(
+            children: [
+              const Icon(
+                Icons.bookmark_added_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('"${widget.book.title}" ditambahkan ke koleksi.'),
+              ),
+            ],
+          ),
+          backgroundColor: successColor,
         ),
       );
     }
@@ -139,7 +142,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: errorColor),
             child: const Text('Hapus'),
           ),
         ],
@@ -148,11 +151,11 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
     if (confirmed == true && mounted) {
       widget.onDeleteBook(saved.id);
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('"${widget.book.title}" dihapus dari koleksi.')),
+        SnackBar(
+          content: Text('"${widget.book.title}" dihapus dari koleksi.'),
+        ),
       );
-
       Navigator.of(context).pop();
     }
   }
@@ -162,10 +165,17 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
     return Container(
       width: double.infinity,
-      height: 230,
+      height: 240,
       decoration: BoxDecoration(
         color: book.color,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(radiusLg),
+        boxShadow: [
+          BoxShadow(
+            color: primaryPurple.withValues(alpha: 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: coverUrl != null && coverUrl.trim().isNotEmpty
@@ -174,39 +184,50 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
               fit: BoxFit.contain,
               loadingBuilder: (context, child, progress) {
                 if (progress == null) return child;
-
                 return Center(
                   child: CircularProgressIndicator(
                     value: progress.expectedTotalBytes != null
                         ? progress.cumulativeBytesLoaded /
                               progress.expectedTotalBytes!
                         : null,
-                    color: primaryBlue,
+                    color: primaryPurple,
                   ),
                 );
               },
-              errorBuilder: (context, error, stackTrace) {
-                return _buildCoverFallback(book);
-              },
+              errorBuilder: (context, error, stackTrace) =>
+                  _buildCoverFallback(book),
             )
           : _buildCoverFallback(book),
     );
   }
 
   Widget _buildCoverFallback(Book book) {
-    return Center(child: Icon(book.icon, size: 85, color: primaryBlue));
+    return Center(
+      child: Icon(
+        book.icon,
+        size: 88,
+        color: primaryPurple.withValues(alpha: 0.5),
+      ),
+    );
   }
 
   Widget _buildDescription() {
     if (_isLoadingDescription) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: Row(
+      return Container(
+        padding: const EdgeInsets.all(spacingMd),
+        decoration: BoxDecoration(
+          color: lightLavender,
+          borderRadius: BorderRadius.circular(radiusMd),
+        ),
+        child: const Row(
           children: [
             SizedBox(
               width: 18,
               height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: primaryPurple,
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
@@ -230,7 +251,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           ),
           TextButton.icon(
             onPressed: _loadDescription,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             label: const Text('Coba lagi'),
           ),
         ],
@@ -246,7 +267,11 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
     return Text(
       _description!,
-      style: const TextStyle(color: secondaryText, height: 1.7, fontSize: 14),
+      style: const TextStyle(
+        color: darkText,
+        height: 1.7,
+        fontSize: 14,
+      ),
     );
   }
 
@@ -256,52 +281,84 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     final saved = _savedBook;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail Buku')),
+      backgroundColor: pageBackground,
+      appBar: AppBar(
+        title: const Text('Detail Buku'),
+        backgroundColor: pageBackground,
+        foregroundColor: darkText,
+        iconTheme: const IconThemeData(color: primaryPurple),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(spacingMd),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildBookCover(book),
-            const SizedBox(height: 24),
+            // Cover
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: _buildBookCover(book),
+              ),
+            ),
+            const SizedBox(height: spacingMd + 4),
 
+            // Title
             Text(
               book.title,
               style: const TextStyle(
-                fontSize: 27,
+                fontSize: 26,
                 fontWeight: FontWeight.bold,
                 color: darkText,
+                height: 1.25,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
 
+            // Author
             Text(
               'Oleh ${book.author}',
               style: const TextStyle(color: secondaryText, fontSize: 15),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: spacingMd),
 
-            Chip(
-              label: Text(book.category),
-              avatar: const Icon(Icons.category_outlined, size: 17),
-              backgroundColor: lightBlue,
-              side: BorderSide.none,
+            // Category chip
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: softPurple,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.category_rounded,
+                    size: 14,
+                    color: primaryPurple,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    book.category,
+                    style: const TextStyle(
+                      color: primaryPurple,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
 
+            // Saved status badge
             if (saved != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: spacingSm),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: SavedBook.statusColor(saved.status)
-                      .withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: SavedBook.statusColor(saved.status).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(radiusSm),
                   border: Border.all(
-                    color: SavedBook.statusColor(saved.status)
-                        .withValues(alpha: 0.3),
+                    color: SavedBook.statusColor(saved.status).withValues(alpha: 0.3),
                   ),
                 ),
                 child: Row(
@@ -309,7 +366,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   children: [
                     Icon(
                       SavedBook.statusIcon(saved.status),
-                      size: 16,
+                      size: 15,
                       color: SavedBook.statusColor(saved.status),
                     ),
                     const SizedBox(width: 6),
@@ -322,15 +379,15 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                       ),
                     ),
                     if (saved.rating != null) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       const Text('·', style: TextStyle(color: secondaryText)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       const Icon(
                         Icons.star_rounded,
                         size: 14,
-                        color: Color(0xFFF59E0B),
+                        color: warningColor,
                       ),
-                      const SizedBox(width: 2),
+                      const SizedBox(width: 3),
                       Text(
                         saved.rating!.toStringAsFixed(1),
                         style: const TextStyle(
@@ -345,41 +402,74 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
               ),
             ],
 
-            const SizedBox(height: 24),
+            const SizedBox(height: spacingMd),
 
-            const Text(
-              'Tentang buku',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: darkText,
+            // About section
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(spacingMd),
+              decoration: BoxDecoration(
+                color: lightLavender,
+                borderRadius: BorderRadius.circular(radiusMd),
+                border: Border.all(color: borderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: softPurple,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.info_outline_rounded,
+                          size: 16,
+                          color: primaryPurple,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Tentang Buku',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: darkText,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDescription(),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            _buildDescription(),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: spacingXl),
 
-            if (_isSaved) ...[
+            // Action buttons
+            if (_isSaved)
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: _handleRemoveFromList,
                   icon: const Icon(
                     Icons.bookmark_remove_rounded,
-                    color: Colors.red,
+                    color: errorColor,
                   ),
                   label: const Text(
                     'Hapus dari Koleksi',
-                    style: TextStyle(color: Colors.red),
+                    style: TextStyle(color: errorColor),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red),
+                    side: const BorderSide(color: errorColor),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
-              ),
-            ] else ...[
+              )
+            else
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -391,9 +481,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   ),
                 ),
               ),
-            ],
-
-            const SizedBox(height: 12),
+            const SizedBox(height: spacingSm),
           ],
         ),
       ),

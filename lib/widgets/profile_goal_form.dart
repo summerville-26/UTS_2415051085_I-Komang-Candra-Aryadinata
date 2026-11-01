@@ -25,12 +25,10 @@ class _ProfileGoalFormState extends State<ProfileGoalForm> {
   @override
   void initState() {
     super.initState();
-
     _titleController = TextEditingController();
     _targetController = TextEditingController(
       text: widget.initialReadingGoal.toString(),
     );
-
     _startDate = DateTime.now();
     _endDate = DateTime.now().add(const Duration(days: 6));
   }
@@ -49,20 +47,9 @@ class _ProfileGoalFormState extends State<ProfileGoalForm> {
 
   String _formatDate(DateTime date) {
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
     ];
-
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
@@ -72,6 +59,16 @@ class _ProfileGoalFormState extends State<ProfileGoalForm> {
       initialDate: isStart ? _startDate : _endDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: primaryPurple,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (selectedDate == null) return;
@@ -79,7 +76,6 @@ class _ProfileGoalFormState extends State<ProfileGoalForm> {
     setState(() {
       if (isStart) {
         _startDate = selectedDate;
-
         if (_endDate.isBefore(_startDate)) {
           _endDate = _startDate.add(const Duration(days: 6));
         }
@@ -97,20 +93,16 @@ class _ProfileGoalFormState extends State<ProfileGoalForm> {
       _showMessage('Silakan masukkan judul target membaca.');
       return;
     }
-
     if (target == null || target < 1) {
       _showMessage('Jumlah buku harus berupa angka minimal 1.');
       return;
     }
-
     if (_endDate.isBefore(_startDate)) {
       _showMessage('Tanggal selesai tidak boleh sebelum tanggal mulai.');
       return;
     }
 
-    setState(() {
-      _isCreatingGoal = true;
-    });
+    setState(() => _isCreatingGoal = true);
 
     try {
       await context.read<ReadingGoalProvider>().createGoal(
@@ -124,7 +116,6 @@ class _ProfileGoalFormState extends State<ProfileGoalForm> {
 
       _titleController.clear();
       _targetController.text = widget.initialReadingGoal.toString();
-
       setState(() {
         _startDate = DateTime.now();
         _endDate = DateTime.now().add(const Duration(days: 6));
@@ -133,14 +124,9 @@ class _ProfileGoalFormState extends State<ProfileGoalForm> {
       _showMessage('Target membaca berhasil dibuat.');
     } catch (e) {
       if (!mounted) return;
-
       _showMessage('Gagal membuat target membaca: $e');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isCreatingGoal = false;
-        });
-      }
+      if (mounted) setState(() => _isCreatingGoal = false);
     }
   }
 
@@ -152,28 +138,28 @@ class _ProfileGoalFormState extends State<ProfileGoalForm> {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(radiusMd),
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F7FB),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200),
+            color: lightLavender,
+            borderRadius: BorderRadius.circular(radiusMd),
+            border: Border.all(color: borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: const TextStyle(fontSize: 12, color: secondaryText),
+                style: const TextStyle(fontSize: 11, color: secondaryText),
               ),
-              const SizedBox(height: 7),
+              const SizedBox(height: 6),
               Row(
                 children: [
                   const Icon(
                     Icons.calendar_month_rounded,
-                    size: 17,
-                    color: primaryBlue,
+                    size: 16,
+                    color: primaryPurple,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -200,97 +186,75 @@ class _ProfileGoalFormState extends State<ProfileGoalForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Header
         Row(
           children: [
             Container(
               padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
-                color: const Color(0xFFDBEAFE),
-                borderRadius: BorderRadius.circular(10),
+                color: softPurple,
+                borderRadius: BorderRadius.circular(radiusSm),
               ),
               child: const Icon(
                 Icons.flag_rounded,
-                color: primaryBlue,
-                size: 21,
+                color: primaryPurple,
+                size: 20,
               ),
             ),
             const SizedBox(width: 12),
             const Expanded(
-              child: Text(
-                'Target Membaca',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: darkText,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Target Membaca',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: darkText,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Buat target agar aktivitas membaca lebih terarah.',
+                    style: TextStyle(color: secondaryText, fontSize: 12),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'Buat target membaca agar aktivitas membaca '
-          'menjadi lebih terarah.',
-          style: TextStyle(color: secondaryText, height: 1.5),
-        ),
-        const SizedBox(height: 20),
+        const SizedBox(height: spacingMd),
 
-        // Judul target
-        const Text(
-          'Nama Target',
-          style: TextStyle(fontWeight: FontWeight.w600, color: darkText),
-        ),
-        const SizedBox(height: 8),
+        // Name field
+        _fieldLabel('Nama Target'),
+        const SizedBox(height: spacingSm),
         TextField(
           controller: _titleController,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             hintText: 'Contoh: Tantangan Membaca Mingguan',
-            filled: true,
-            fillColor: const Color(0xFFF5F7FB),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 14,
-            ),
+            prefixIcon: Icon(Icons.label_rounded, size: 18),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: spacingMd),
 
-        // Jumlah buku
-        const Text(
-          'Target Jumlah Buku',
-          style: TextStyle(fontWeight: FontWeight.w600, color: darkText),
-        ),
-        const SizedBox(height: 8),
+        // Target count field
+        _fieldLabel('Target Jumlah Buku'),
+        const SizedBox(height: spacingSm),
         TextField(
           controller: _targetController,
           keyboardType: TextInputType.number,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             hintText: 'Masukkan jumlah buku',
             suffixText: 'buku',
-            filled: true,
-            fillColor: const Color(0xFFF5F7FB),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 14,
-            ),
+            prefixIcon: Icon(Icons.menu_book_rounded, size: 18),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: spacingMd),
 
-        // Periode target
-        const Text(
-          'Periode Membaca',
-          style: TextStyle(fontWeight: FontWeight.w600, color: darkText),
-        ),
-        const SizedBox(height: 8),
+        // Date range
+        _fieldLabel('Periode Membaca'),
+        const SizedBox(height: spacingSm),
         Row(
           children: [
             _datePickerTile(
@@ -298,7 +262,7 @@ class _ProfileGoalFormState extends State<ProfileGoalForm> {
               date: _startDate,
               onTap: () => _pickDate(isStart: true),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: spacingSm),
             _datePickerTile(
               label: 'Tanggal Selesai',
               date: _endDate,
@@ -306,12 +270,12 @@ class _ProfileGoalFormState extends State<ProfileGoalForm> {
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: spacingMd),
 
-        // Tombol simpan
+        // Submit button
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton.icon(
+          child: FilledButton.icon(
             onPressed: _isCreatingGoal ? null : _createGoal,
             icon: _isCreatingGoal
                 ? const SizedBox(
@@ -326,18 +290,23 @@ class _ProfileGoalFormState extends State<ProfileGoalForm> {
             label: Text(
               _isCreatingGoal ? 'Menyimpan...' : 'Buat Target Membaca',
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryBlue,
-              foregroundColor: Colors.white,
+            style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _fieldLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontWeight: FontWeight.w600,
+        color: darkText,
+        fontSize: 13,
+      ),
     );
   }
 }

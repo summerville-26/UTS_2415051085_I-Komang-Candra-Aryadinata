@@ -4,10 +4,6 @@ import '../config/theme.dart';
 import '../models/saved_book.dart';
 
 /// Layar form untuk mengedit data buku yang sudah tersimpan di koleksi.
-///
-/// Menerima [SavedBook] dan mengembalikan [SavedBook] yang sudah diperbarui
-/// via [Navigator.pop] saat pengguna menyimpan perubahan.
-/// Integrasi Supabase dilakukan pada Milestone 11.
 class EditBookScreen extends StatefulWidget {
   const EditBookScreen({super.key, required this.savedBook});
 
@@ -27,7 +23,6 @@ class _EditBookScreenState extends State<EditBookScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-fill dengan data yang sudah ada
     _selectedStatus = widget.savedBook.status;
     _rating = widget.savedBook.rating ?? 0;
     _notesController = TextEditingController(
@@ -58,36 +53,53 @@ class _EditBookScreenState extends State<EditBookScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Buku')),
+      backgroundColor: pageBackground,
+      appBar: AppBar(
+        title: const Text('Edit Buku'),
+        backgroundColor: pageBackground,
+        foregroundColor: darkText,
+        iconTheme: const IconThemeData(color: primaryPurple),
+      ),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(spacingMd),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ─── Info buku (read-only) ───────────────────────────────────
+              // ─── Info buku (read-only) ─────────────────────────────────────
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(spacingMd),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  color: cardSurface,
+                  borderRadius: BorderRadius.circular(radiusMd),
+                  border: Border.all(color: borderColor),
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      width: 56,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color:
-                            widget.savedBook.color ?? const Color(0xFFDDEAFE),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        widget.savedBook.icon ?? Icons.menu_book_rounded,
-                        color: primaryBlue,
-                        size: 28,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(radiusSm),
+                      child: Container(
+                        width: 58,
+                        height: 76,
+                        color: widget.savedBook.color ?? softPurple,
+                        child: widget.savedBook.coverUrl != null &&
+                                widget.savedBook.coverUrl!.isNotEmpty
+                            ? Image.network(
+                                widget.savedBook.coverUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Icon(
+                                  widget.savedBook.icon ??
+                                      Icons.menu_book_rounded,
+                                  color: primaryPurple,
+                                  size: 30,
+                                ),
+                              )
+                            : Icon(
+                                widget.savedBook.icon ?? Icons.menu_book_rounded,
+                                color: primaryPurple,
+                                size: 30,
+                              ),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -112,21 +124,21 @@ class _EditBookScreenState extends State<EditBookScreen> {
                             ),
                           ),
                           if (widget.savedBook.category != null) ...[
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 7),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: lightBlue,
-                                borderRadius: BorderRadius.circular(6),
+                                color: softPurple,
+                                borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
                                 widget.savedBook.category!,
                                 style: const TextStyle(
                                   fontSize: 11,
-                                  color: primaryBlue,
+                                  color: primaryPurple,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -138,64 +150,48 @@ class _EditBookScreenState extends State<EditBookScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: spacingLg),
 
-              // ─── Status membaca ──────────────────────────────────────────
-              const Text(
-                'Status Membaca',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: darkText,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Perbarui status sesuai perkembangan bacaanmu.',
-                style: TextStyle(color: secondaryText, fontSize: 12),
+              // ─── Status membaca ────────────────────────────────────────────
+              _SectionHeader(
+                icon: Icons.bookmark_rounded,
+                title: 'Status Membaca',
+                subtitle: 'Perbarui status sesuai perkembangan bacaanmu.',
               ),
               const SizedBox(height: 12),
               _StatusSelector(
                 selected: _selectedStatus,
                 onChanged: (status) => setState(() => _selectedStatus = status),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: spacingLg),
 
-              // ─── Rating ──────────────────────────────────────────────────
+              // ─── Rating ────────────────────────────────────────────────────
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Rating',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: darkText,
-                    ),
+                  _SectionHeader(
+                    icon: Icons.star_rounded,
+                    title: 'Rating',
                   ),
+                  const Spacer(),
                   Text(
                     _rating == 0 ? 'Belum dirating' : '${_rating.toInt()}/5',
                     style: const TextStyle(color: secondaryText, fontSize: 12),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               _StarRatingInput(
                 rating: _rating,
                 onChanged: (r) => setState(() => _rating = r),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: spacingLg),
 
-              // ─── Catatan ─────────────────────────────────────────────────
-              const Text(
-                'Catatan Pribadi',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: darkText,
-                ),
+              // ─── Catatan ───────────────────────────────────────────────────
+              _SectionHeader(
+                icon: Icons.edit_note_rounded,
+                title: 'Catatan Pribadi',
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _notesController,
                 maxLines: 4,
@@ -206,9 +202,9 @@ class _EditBookScreenState extends State<EditBookScreen> {
                   alignLabelWithHint: true,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: spacingXl),
 
-              // ─── Tombol simpan ───────────────────────────────────────────
+              // ─── Tombol simpan ─────────────────────────────────────────────
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -216,7 +212,7 @@ class _EditBookScreenState extends State<EditBookScreen> {
                   icon: const Icon(Icons.save_rounded),
                   label: const Text('Simpan Perubahan'),
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
                   ),
                 ),
               ),
@@ -228,7 +224,51 @@ class _EditBookScreenState extends State<EditBookScreen> {
   }
 }
 
-// ─── Widget Pemilih Status ───────────────────────────────────────────────────
+// ─── Reusable Section Header ──────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: primaryPurple, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: darkText,
+              ),
+            ),
+          ],
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 3),
+          Text(
+            subtitle!,
+            style: const TextStyle(color: secondaryText, fontSize: 12),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ─── Status Selector ──────────────────────────────────────────────────────────
 
 class _StatusSelector extends StatelessWidget {
   const _StatusSelector({required this.selected, required this.onChanged});
@@ -244,39 +284,52 @@ class _StatusSelector extends StatelessWidget {
         final color = SavedBook.statusColor(status);
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: spacingSm),
           child: InkWell(
             onTap: () => onChanged(status),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(radiusMd),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(
+                horizontal: spacingMd,
+                vertical: 14,
+              ),
               decoration: BoxDecoration(
-                color: isActive ? color.withValues(alpha: 0.08) : Colors.white,
-                borderRadius: BorderRadius.circular(14),
+                color: isActive ? color.withValues(alpha: 0.08) : cardSurface,
+                borderRadius: BorderRadius.circular(radiusMd),
                 border: Border.all(
-                  color: isActive ? color : const Color(0xFFE2E8F0),
+                  color: isActive ? color : borderColor,
                   width: isActive ? 1.5 : 1,
                 ),
               ),
               child: Row(
                 children: [
-                  Icon(
-                    SavedBook.statusIcon(status),
-                    size: 20,
-                    color: isActive ? color : secondaryText,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    SavedBook.statusLabel(status),
-                    style: TextStyle(
-                      fontWeight: isActive
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      color: isActive ? color : darkText,
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? color.withValues(alpha: 0.15)
+                          : const Color(0xFFF0F0F0),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      SavedBook.statusIcon(status),
+                      size: 18,
+                      color: isActive ? color : secondaryText,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      SavedBook.statusLabel(status),
+                      style: TextStyle(
+                        fontWeight:
+                            isActive ? FontWeight.bold : FontWeight.normal,
+                        color: isActive ? color : darkText,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
                   if (isActive)
                     Icon(Icons.check_circle_rounded, color: color, size: 20),
                 ],
@@ -289,7 +342,7 @@ class _StatusSelector extends StatelessWidget {
   }
 }
 
-// ─── Widget Input Bintang Rating ─────────────────────────────────────────────
+// ─── Star Rating Input ────────────────────────────────────────────────────────
 
 class _StarRatingInput extends StatelessWidget {
   const _StarRatingInput({required this.rating, required this.onChanged});
@@ -305,11 +358,17 @@ class _StarRatingInput extends StatelessWidget {
         return GestureDetector(
           onTap: () => onChanged(rating == starValue ? 0 : starValue),
           child: Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: Icon(
-              index < rating ? Icons.star_rounded : Icons.star_border_rounded,
-              color: const Color(0xFFF59E0B),
-              size: 36,
+            padding: const EdgeInsets.only(right: 8),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 150),
+              child: Icon(
+                index < rating
+                    ? Icons.star_rounded
+                    : Icons.star_border_rounded,
+                key: ValueKey('$index-${index < rating}'),
+                color: warningColor,
+                size: 38,
+              ),
             ),
           ),
         );

@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../models/book.dart';
 
-/// Kartu buku yang digunakan di grid katalog.
-/// Menampilkan sampul, judul, penulis, dan kategori.
+/// Kartu buku responsif untuk grid katalog.
+/// Menampilkan sampul, judul, penulis, kategori, dan tombol bookmark.
 class BookCard extends StatelessWidget {
   const BookCard({
     super.key,
@@ -15,66 +15,62 @@ class BookCard extends StatelessWidget {
   });
 
   final Book book;
-
-  /// True jika buku sudah ada di daftar bacaan pengguna.
   final bool isSaved;
-
-  /// Dipanggil saat ikon bookmark ditekan (quick save/unsave).
   final VoidCallback onToggleSaved;
-
-  /// Dipanggil saat kartu ditekan (membuka BookDetailScreen).
   final VoidCallback onOpen;
 
-  /// Tampilan pengganti jika sampul tidak tersedia atau gagal dimuat.
   Widget _buildCoverFallback() {
     return Container(
       width: double.infinity,
       height: double.infinity,
       decoration: BoxDecoration(
-        color: book.color,
-        borderRadius: BorderRadius.circular(13),
+        gradient: LinearGradient(
+          colors: [
+            book.color.withValues(alpha: 0.8),
+            book.color,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(radiusMd),
       ),
-      child: Icon(book.icon, color: primaryBlue, size: 43),
+      child: Icon(
+        book.icon,
+        color: primaryPurple.withValues(alpha: 0.7),
+        size: 40,
+      ),
     );
   }
 
-  /// Menampilkan sampul dari Open Library jika tersedia.
   Widget _buildBookCover() {
     final coverUrl = book.coverUrl;
-
     if (coverUrl == null || coverUrl.trim().isEmpty) {
       return _buildCoverFallback();
     }
-
     return ClipRRect(
-      borderRadius: BorderRadius.circular(13),
+      borderRadius: BorderRadius.circular(radiusMd),
       child: SizedBox(
         width: double.infinity,
         height: double.infinity,
         child: Image.network(
           coverUrl,
-          fit: BoxFit.contain,
+          fit: BoxFit.cover,
           loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) {
-              return child;
-            }
-
+            if (loadingProgress == null) return child;
             return Container(
               color: book.color,
               alignment: Alignment.center,
-              child: const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: primaryBlue,
-                ),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: primaryPurple,
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                    : null,
               ),
             );
           },
-          errorBuilder: (context, error, stackTrace) {
-            return _buildCoverFallback();
-          },
+          errorBuilder: (context, error, stackTrace) => _buildCoverFallback(),
         ),
       ),
     );
@@ -82,60 +78,111 @@ class BookCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onOpen,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.all(11),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE8EDF5)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Area sampul buku
-            Expanded(
-              child: Stack(
-                children: [Positioned.fill(child: _buildBookCover())],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(radiusMd),
+        splashColor: primaryPurple.withValues(alpha: 0.08),
+        highlightColor: primaryPurple.withValues(alpha: 0.04),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: cardSurface,
+            borderRadius: BorderRadius.circular(radiusMd),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: primaryPurple.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
               ),
-            ),
-            const SizedBox(height: 10),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Sampul dengan tombol bookmark
+              Expanded(
+                child: Stack(
+                  children: [
+                    Positioned.fill(child: _buildBookCover()),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: GestureDetector(
+                        onTap: onToggleSaved,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: isSaved
+                                ? primaryPurple
+                                : Colors.white.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(radiusSm),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            isSaved
+                                ? Icons.bookmark_rounded
+                                : Icons.bookmark_border_rounded,
+                            color: isSaved ? Colors.white : primaryPurple,
+                            size: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
 
-            // Informasi buku
-            Text(
-              book.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: darkText,
+              // Informasi buku
+              Text(
+                book.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: darkText,
+                  height: 1.3,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              book.author,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: secondaryText),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              book.category,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 10, color: primaryBlue),
-            ),
-          ],
+              const SizedBox(height: 3),
+              Text(
+                book.author,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, color: secondaryText),
+              ),
+              const SizedBox(height: 5),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: softPurple,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  book.category,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 9,
+                    color: primaryPurple,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

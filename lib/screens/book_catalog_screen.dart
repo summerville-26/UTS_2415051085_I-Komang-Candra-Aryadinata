@@ -10,7 +10,7 @@ import '../widgets/search_field.dart';
 import '../widgets/app_error_view.dart';
 import 'book_detail_screen.dart';
 
-/// Katalog buku yang mengambil data dari Open Library API.
+/// Katalog buku dari Open Library API dengan desain modern.
 class BookCatalogScreen extends StatefulWidget {
   const BookCatalogScreen({
     super.key,
@@ -37,13 +37,10 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
     if (!_initialFetchStarted) {
       _initialFetchStarted = true;
-
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-
         final provider = context.read<BookApiProvider>();
         if (provider.books.isEmpty &&
             !provider.isLoading &&
@@ -62,7 +59,6 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
 
   void _searchBooks(String value) {
     setState(() => _query = value);
-
     final query = value.trim();
     if (query.isEmpty) {
       context.read<BookApiProvider>().fetchBooks(query: 'fiction');
@@ -105,30 +101,75 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Book Catalog',
-                    style: TextStyle(
-                      fontSize: 27,
-                      fontWeight: FontWeight.bold,
-                      color: darkText,
-                    ),
+                  // ─── Header ───────────────────────────────────────────────
+                  Row(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [primaryPurple, deepPurple],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(radiusMd),
+                        ),
+                        child: const Icon(
+                          Icons.explore_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Katalog Buku',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: darkText,
+                              ),
+                            ),
+                            Text(
+                              'Jelajahi koleksi & temukan bacaan berikutnya.',
+                              style: TextStyle(
+                                color: secondaryText,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Jelajahi koleksi dan temukan bacaan berikutnya.',
-                    style: TextStyle(color: secondaryText),
-                  ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: spacingMd),
+
+                  // ─── Search ───────────────────────────────────────────────
                   SearchField(
+                    controller: _searchController,
                     hintText: 'Cari judul, penulis, kategori...',
                     onChanged: _searchBooks,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: spacingMd),
+
+                  // ─── Loading bar ──────────────────────────────────────────
                   if (apiProvider.isLoading)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: LinearProgressIndicator(),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: const LinearProgressIndicator(
+                        minHeight: 3,
+                        color: primaryPurple,
+                        backgroundColor: softPurple,
+                      ),
                     ),
+                  if (apiProvider.isLoading)
+                    const SizedBox(height: spacingSm),
+
+                  // ─── Results ──────────────────────────────────────────────
                   if (apiProvider.errorMessage != null) ...[
                     AppErrorView(
                       message: apiProvider.errorMessage!,
@@ -137,18 +178,32 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
                       ),
                     ),
                   ] else ...[
-                    Text(
-                      apiProvider.isLoading
-                          ? 'Memuat buku...'
-                          : _query.trim().isEmpty
-                          ? '${books.length} buku tersedia'
-                          : '${books.length} buku ditemukan',
-                      style: const TextStyle(
-                        color: secondaryText,
-                        fontWeight: FontWeight.w600,
+                    // Result count chip
+                    if (!apiProvider.isLoading || books.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: softPurple,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          apiProvider.isLoading
+                              ? 'Memuat buku...'
+                              : _query.trim().isEmpty
+                              ? '${books.length} buku tersedia'
+                              : '${books.length} buku ditemukan untuk "$_query"',
+                          style: const TextStyle(
+                            color: primaryPurple,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: spacingMd),
+
                     if (!apiProvider.isLoading && books.isEmpty)
                       EmptyStateView(
                         title: 'Buku tidak ditemukan',

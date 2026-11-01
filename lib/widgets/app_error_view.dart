@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../config/theme.dart';
 
-/// Widget untuk kondisi kosong (empty state) — digunakan di katalog dan perpustakaan.
+/// Widget untuk kondisi kosong (empty state).
 class EmptyStateView extends StatelessWidget {
   const EmptyStateView({
     super.key,
@@ -16,8 +16,6 @@ class EmptyStateView extends StatelessWidget {
   final String title;
   final String message;
   final IconData icon;
-
-  /// Jika diisi, menampilkan tombol aksi di bawah pesan.
   final String? actionLabel;
   final VoidCallback? onAction;
 
@@ -25,34 +23,45 @@ class EmptyStateView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 42),
+      padding: const EdgeInsets.symmetric(horizontal: spacingLg, vertical: 48),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: lightLavender,
+        borderRadius: BorderRadius.circular(radiusLg),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 48, color: secondaryText),
-          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(spacingMd),
+            decoration: BoxDecoration(
+              color: softPurple,
+              borderRadius: BorderRadius.circular(radiusMd),
+            ),
+            child: Icon(icon, size: 40, color: primaryPurple),
+          ),
+          const SizedBox(height: spacingMd),
           Text(
             title,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 15,
+              fontSize: 16,
               color: darkText,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: spacingSm),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: secondaryText, height: 1.5),
+            style: const TextStyle(
+              color: secondaryText,
+              height: 1.5,
+              fontSize: 13,
+            ),
           ),
           if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: spacingMd),
             FilledButton(onPressed: onAction, child: Text(actionLabel!)),
           ],
         ],
@@ -61,7 +70,7 @@ class EmptyStateView extends StatelessWidget {
   }
 }
 
-/// Widget untuk kondisi error jaringan atau API — digunakan saat request gagal.
+/// Widget untuk kondisi error jaringan atau API.
 class AppErrorView extends StatelessWidget {
   const AppErrorView({
     super.key,
@@ -76,33 +85,48 @@ class AppErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 42),
+      padding: const EdgeInsets.symmetric(horizontal: spacingLg, vertical: 48),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: errorColor.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(radiusLg),
+        border: Border.all(color: errorColor.withValues(alpha: 0.2)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.wifi_off_rounded, size: 48, color: secondaryText),
-          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(spacingMd),
+            decoration: BoxDecoration(
+              color: errorColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(radiusMd),
+            ),
+            child: Icon(
+              Icons.wifi_off_rounded,
+              size: 40,
+              color: errorColor,
+            ),
+          ),
+          const SizedBox(height: spacingMd),
           const Text(
             'Terjadi Kesalahan',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 15,
+              fontSize: 16,
               color: darkText,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: spacingSm),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: secondaryText, height: 1.5),
+            style: TextStyle(
+              color: secondaryText,
+              height: 1.5,
+              fontSize: 13,
+            ),
           ),
           if (onRetry != null) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: spacingMd),
             OutlinedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),

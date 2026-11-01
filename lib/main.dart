@@ -21,12 +21,20 @@ Future<void> main() async {
   await Supabase.initialize(
     url: SupabaseConfig.supabaseUrl,
     publishableKey: SupabaseConfig.supabasePublishableKey,
+    debug: true,
   );
 
   // Membuat sesi anonim jika belum ada sesi aktif.
   try {
     if (Supabase.instance.client.auth.currentSession == null) {
       await Supabase.instance.client.auth.signInAnonymously();
+      debugPrint('SESSION SEBELUM ANON LOGIN:');
+      debugPrint(
+        'Current User: ${Supabase.instance.client.auth.currentUser?.id}',
+      );
+      debugPrint(
+        'Current Session: ${Supabase.instance.client.auth.currentSession != null}',
+      );
     }
   } catch (error, stackTrace) {
     debugPrint('Gagal membuat sesi anonim Supabase: $error');
@@ -65,17 +73,47 @@ class SupabaseConnectionErrorApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: buildBookNestTheme(),
       home: Scaffold(
+        backgroundColor: pageBackground,
         body: Center(
           child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'Tidak dapat membuat sesi anonim Supabase.\n\n'
-              'Periksa koneksi internet, URL dan Publishable Key, '
-              'serta pengaturan Anonymous Sign-Ins di Supabase.',
-              textAlign: TextAlign.center,
+            padding: const EdgeInsets.all(spacingLg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(spacingMd),
+                  decoration: BoxDecoration(
+                    color: softPurple,
+                    borderRadius: BorderRadius.circular(radiusMd),
+                  ),
+                  child: const Icon(
+                    Icons.cloud_off_rounded,
+                    color: primaryPurple,
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: spacingMd),
+                const Text(
+                  'Koneksi Gagal',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: darkText,
+                  ),
+                ),
+                const SizedBox(height: spacingSm),
+                const Text(
+                  'Tidak dapat membuat sesi anonim Supabase.\n\n'
+                  'Periksa koneksi internet, URL dan Publishable Key, '
+                  'serta pengaturan Anonymous Sign-Ins di Supabase.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: secondaryText, height: 1.5),
+                ),
+              ],
             ),
           ),
         ),
@@ -142,30 +180,45 @@ class _MainNavigationState extends State<MainNavigation> {
       body: SafeArea(
         child: IndexedStack(index: _selectedIndex, children: pages),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() => _selectedIndex = index);
-        },
-        backgroundColor: Colors.white,
-        indicatorColor: lightBlue,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Home',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: const Border(
+            top: BorderSide(color: borderColor),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_rounded),
-            selectedIcon: Icon(Icons.grid_view_rounded),
-            label: 'Catalog',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bookmark_border_rounded),
-            selectedIcon: Icon(Icons.bookmark_rounded),
-            label: 'My Library',
-          ),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: primaryPurple.withValues(alpha: 0.06),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: NavigationBar(
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (index) {
+            setState(() => _selectedIndex = index);
+          },
+          backgroundColor: Colors.transparent,
+          indicatorColor: softPurple,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.explore_outlined),
+              selectedIcon: Icon(Icons.explore_rounded),
+              label: 'Catalog',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.collections_bookmark_outlined),
+              selectedIcon: Icon(Icons.collections_bookmark_rounded),
+              label: 'My Library',
+            ),
+          ],
+        ),
       ),
     );
   }

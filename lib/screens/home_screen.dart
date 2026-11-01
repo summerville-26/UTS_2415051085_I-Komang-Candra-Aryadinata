@@ -6,12 +6,13 @@ import '../models/book.dart';
 import '../models/saved_book.dart';
 import '../providers/book_api_provider.dart';
 import '../providers/reading_goal_provider.dart';
+import '../providers/user_profile_provider.dart';
 import '../widgets/book_grid.dart';
 import '../widgets/app_error_view.dart';
 import 'book_detail_screen.dart';
 import 'profile_screen.dart';
 
-/// Layar beranda BookNest.
+/// Layar beranda BookNest – desain modern dengan palet ungu & putih.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -40,15 +41,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
     if (!_initialFetchStarted) {
       _initialFetchStarted = true;
-
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-
         final provider = context.read<BookApiProvider>();
-
         if (provider.books.isEmpty &&
             !provider.isLoading &&
             provider.errorMessage == null) {
@@ -95,46 +92,131 @@ class _HomeScreenState extends State<HomeScreen> {
       'Nov',
       'Des',
     ];
-
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   ReadingGoalProgress? _getCurrentGoal(List<ReadingGoalProgress> progressList) {
     if (progressList.isEmpty) return null;
-
-    // Prioritaskan target yang sedang berjalan.
     for (final item in progressList) {
-      if (item.status == ReadingGoalStatus.active) {
-        return item;
-      }
+      if (item.status == ReadingGoalStatus.active) return item;
     }
-
-    // Jika belum ada target aktif, tampilkan target mendatang.
     for (final item in progressList) {
-      if (item.status == ReadingGoalStatus.upcoming) {
-        return item;
-      }
+      if (item.status == ReadingGoalStatus.upcoming) return item;
     }
-
-    // Jika semua target selesai, tampilkan target terbaru.
     return progressList.first;
   }
 
+  // ─── Reading Stats Summary ────────────────────────────────────────────────
+  Widget _buildStatsSummary() {
+    final total = widget.savedBooks.length;
+    final reading = widget.savedBooks
+        .where((b) => b.status == SavedBook.statusReading)
+        .length;
+    final completed = widget.savedBooks
+        .where((b) => b.status == SavedBook.statusCompleted)
+        .length;
+    final wantToRead = widget.savedBooks
+        .where((b) => b.status == SavedBook.statusWantToRead)
+        .length;
+
+    return Row(
+      children: [
+        _buildStatCard(
+          icon: Icons.auto_stories_rounded,
+          value: '$total',
+          label: 'Total',
+          color: primaryPurple,
+        ),
+        const SizedBox(width: spacingSm),
+        _buildStatCard(
+          icon: Icons.menu_book_rounded,
+          value: '$reading',
+          label: 'Dibaca',
+          color: warningColor,
+        ),
+        const SizedBox(width: spacingSm),
+        _buildStatCard(
+          icon: Icons.check_circle_rounded,
+          value: '$completed',
+          label: 'Selesai',
+          color: successColor,
+        ),
+        const SizedBox(width: spacingSm),
+        _buildStatCard(
+          icon: Icons.bookmark_rounded,
+          value: '$wantToRead',
+          label: 'Wishlist',
+          color: deepPurple,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(radiusMd),
+          border: Border.all(color: color.withValues(alpha: 0.18)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: color.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Reading Goal ─────────────────────────────────────────────────────────
   Widget _buildReadingGoal() {
-    final provider = context.watch<ReadingGoalProvider>();
+    ReadingGoalProvider? provider;
+    try {
+      provider = context.watch<ReadingGoalProvider>();
+    } catch (_) {
+      provider = null;
+    }
+
+    if (provider == null) {
+      return _buildNoGoal();
+    }
 
     final progressList = provider.getProgressForBooks(widget.savedBooks);
-
     final currentGoal = _getCurrentGoal(progressList);
 
     if (provider.isLoading && currentGoal == null) {
       return _buildGoalLoading();
     }
-
     if (provider.errorMessage != null && currentGoal == null) {
       return _buildGoalError(provider.errorMessage!);
     }
-
     if (currentGoal == null) {
       return _buildNoGoal();
     }
@@ -143,17 +225,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final percentage = (currentGoal.progress * 100).round();
 
     final statusText = switch (currentGoal.status) {
-      ReadingGoalStatus.upcoming => 'Belum Dimulai',
+      ReadingGoalStatus.upcoming => 'Akan Dimulai',
       ReadingGoalStatus.active => 'Sedang Berjalan',
-      ReadingGoalStatus.achieved => 'Target Tercapai',
-      ReadingGoalStatus.notAchieved => 'Target Berakhir',
+      ReadingGoalStatus.achieved => 'Tercapai 🎉',
+      ReadingGoalStatus.notAchieved => 'Sudah Berakhir',
     };
 
     final statusColor = switch (currentGoal.status) {
-      ReadingGoalStatus.upcoming => const Color(0xFF64748B),
-      ReadingGoalStatus.active => primaryBlue,
-      ReadingGoalStatus.achieved => const Color(0xFF16A34A),
-      ReadingGoalStatus.notAchieved => const Color(0xFFEA580C),
+      ReadingGoalStatus.upcoming => warningColor,
+      ReadingGoalStatus.active => primaryPurple,
+      ReadingGoalStatus.achieved => successColor,
+      ReadingGoalStatus.notAchieved => errorColor,
     };
 
     final message = switch (currentGoal.status) {
@@ -173,15 +255,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(spacingMd),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: cardSurface,
+        borderRadius: BorderRadius.circular(radiusLg),
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 12,
+            color: primaryPurple.withValues(alpha: 0.04),
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
@@ -195,10 +277,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDBEAFE),
-                  borderRadius: BorderRadius.circular(13),
+                  gradient: const LinearGradient(
+                    colors: [primaryPurple, deepPurple],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(radiusSm + 2),
                 ),
-                child: const Icon(Icons.flag_rounded, color: primaryBlue),
+                child: const Icon(
+                  Icons.flag_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -208,12 +298,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       'Target Bacaan',
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: darkText,
                       ),
                     ),
-                    SizedBox(height: 3),
+                    SizedBox(height: 2),
                     Text(
                       'Pantau perkembangan membacamu',
                       style: TextStyle(fontSize: 11, color: secondaryText),
@@ -224,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
-                  vertical: 6,
+                  vertical: 5,
                 ),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.10),
@@ -241,26 +331,26 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: spacingMd),
 
           Text(
             goal.title,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
               color: darkText,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             '$percentage% tercapai',
             style: const TextStyle(
-              color: primaryBlue,
+              color: primaryPurple,
               fontWeight: FontWeight.bold,
-              fontSize: 24,
+              fontSize: 26,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
@@ -271,14 +361,16 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (context, value, child) {
                 return LinearProgressIndicator(
                   value: value,
-                  minHeight: 11,
-                  backgroundColor: const Color(0xFFEFF3F8),
-                  valueColor: const AlwaysStoppedAnimation<Color>(primaryBlue),
+                  minHeight: 10,
+                  backgroundColor: softPurple,
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    primaryPurple,
+                  ),
                 );
               },
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: spacingMd),
 
           Row(
             children: [
@@ -299,21 +391,21 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F6FF),
-              borderRadius: BorderRadius.circular(13),
+              color: lightLavender,
+              borderRadius: BorderRadius.circular(radiusSm),
             ),
             child: Row(
               children: [
                 const Icon(
                   Icons.auto_awesome_rounded,
-                  color: primaryBlue,
-                  size: 19,
+                  color: primaryPurple,
+                  size: 18,
                 ),
                 const SizedBox(width: 9),
                 Expanded(
@@ -329,19 +421,25 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           Row(
             children: [
               Expanded(
                 child: Text(
-                  '${_formatDate(goal.startDate)} - '
+                  '${_formatDate(goal.startDate)} – '
                   '${_formatDate(goal.endDate)}',
                   style: const TextStyle(fontSize: 11, color: secondaryText),
                 ),
               ),
               TextButton(
                 onPressed: _openProfile,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: spacingSm,
+                    vertical: 4,
+                  ),
+                ),
                 child: const Text('Kelola Target'),
               ),
             ],
@@ -356,48 +454,59 @@ class _HomeScreenState extends State<HomeScreen> {
     required String label,
     required String value,
   }) {
-    return Row(
-      children: [
-        Icon(icon, color: primaryBlue, size: 19),
-        const SizedBox(width: 7),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(color: secondaryText, fontSize: 11),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: darkText,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: softPurple,
+        borderRadius: BorderRadius.circular(radiusSm),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: primaryPurple, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(color: secondaryText, fontSize: 10),
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: darkText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildGoalLoading() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(spacingMd),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: cardSurface,
+        borderRadius: BorderRadius.circular(radiusLg),
+        border: Border.all(color: borderColor),
       ),
       child: const Row(
         children: [
           SizedBox(
             width: 22,
             height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: primaryPurple,
+            ),
           ),
           SizedBox(width: 14),
           Text(
@@ -412,10 +521,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildGoalError(String message) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(spacingMd),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: cardSurface,
+        borderRadius: BorderRadius.circular(radiusLg),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,19 +534,17 @@ class _HomeScreenState extends State<HomeScreen> {
             'Target Bacaan',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 17,
+              fontSize: 16,
               color: darkText,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: spacingSm),
           Text(
             message,
             style: const TextStyle(color: secondaryText, fontSize: 12),
           ),
           TextButton.icon(
-            onPressed: () {
-              context.read<ReadingGoalProvider>().loadGoals();
-            },
+            onPressed: () => context.read<ReadingGoalProvider>().loadGoals(),
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('Coba lagi'),
           ),
@@ -446,63 +554,73 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildNoGoal() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFFDBEAFE),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Icon(
-              Icons.flag_outlined,
-              color: primaryBlue,
-              size: 27,
-            ),
+    return InkWell(
+      onTap: _openProfile,
+      borderRadius: BorderRadius.circular(radiusLg),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(spacingMd),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [softPurple, lightLavender],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          const SizedBox(width: 13),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Buat Target Bacaan',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: darkText,
-                    fontSize: 15,
+          borderRadius: BorderRadius.circular(radiusLg),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: primaryPurple,
+                borderRadius: BorderRadius.circular(radiusMd),
+              ),
+              child: const Icon(
+                Icons.flag_rounded,
+                color: Colors.white,
+                size: 26,
+              ),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Buat Target Bacaan',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: darkText,
+                      fontSize: 15,
+                    ),
                   ),
-                ),
-                SizedBox(height: 5),
-                Text(
-                  'Tentukan target dan mulai perjalanan membacamu.',
-                  style: TextStyle(
-                    color: secondaryText,
-                    fontSize: 11,
-                    height: 1.4,
+                  SizedBox(height: 4),
+                  Text(
+                    'Tentukan target dan mulai perjalanan membacamu.',
+                    style: TextStyle(
+                      color: secondaryText,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          IconButton(
-            onPressed: _openProfile,
-            icon: const Icon(Icons.arrow_forward_rounded, color: primaryBlue),
-          ),
-        ],
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: primaryPurple,
+              size: 16,
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  // ─── Recommendations ──────────────────────────────────────────────────────
   Widget _buildRecommendations() {
     final provider = context.watch<BookApiProvider>();
     final books = provider.books;
@@ -514,9 +632,9 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'Rekomendasi buku',
+              'Rekomendasi Buku',
               style: TextStyle(
-                fontSize: 19,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: darkText,
               ),
@@ -530,26 +648,36 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 12),
 
         if (provider.isLoading && books.isEmpty)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: CircularProgressIndicator(),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(spacingLg),
+            decoration: BoxDecoration(
+              color: lightLavender,
+              borderRadius: BorderRadius.circular(radiusLg),
+            ),
+            child: const Column(
+              children: [
+                CircularProgressIndicator(color: primaryPurple),
+                SizedBox(height: 12),
+                Text(
+                  'Memuat rekomendasi...',
+                  style: TextStyle(color: secondaryText, fontSize: 13),
+                ),
+              ],
             ),
           )
         else if (provider.errorMessage != null && books.isEmpty)
           AppErrorView(
             message: provider.errorMessage!,
-            onRetry: () {
-              provider.fetchBooks(query: 'fiction');
-            },
+            onRetry: () => provider.fetchBooks(query: 'fiction'),
           )
         else if (books.isEmpty)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(spacingLg),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
+              color: lightLavender,
+              borderRadius: BorderRadius.circular(radiusLg),
             ),
             child: const Text(
               'Belum ada rekomendasi buku.',
@@ -570,6 +698,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    UserProfileProvider? userProfileProvider;
+    try {
+      userProfileProvider = context.watch<UserProfileProvider>();
+    } catch (_) {
+      userProfileProvider = null;
+    }
+    final userProfile = userProfileProvider?.profile;
+    final hasCustomName =
+        userProfile?.name != null && userProfile!.name.trim().isNotEmpty;
+    final greeting = hasCustomName
+        ? 'Halo, ${userProfile.name.trim()}!'
+        : 'Halo, pembaca!';
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 700;
@@ -585,15 +726,19 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header
+                  // ─── Header ──────────────────────────────────────────────
                   Row(
                     children: [
                       Container(
-                        width: 46,
-                        height: 46,
+                        width: 48,
+                        height: 48,
                         decoration: BoxDecoration(
-                          color: primaryBlue,
-                          borderRadius: BorderRadius.circular(15),
+                          gradient: const LinearGradient(
+                            colors: [primaryPurple, deepPurple],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(radiusMd),
                         ),
                         child: const Icon(
                           Icons.auto_stories_rounded,
@@ -609,13 +754,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             Text(
                               'BookNest',
                               style: TextStyle(
-                                fontSize: 21,
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold,
                                 color: darkText,
                               ),
                             ),
                             Text(
-                              'Your personal reading space',
+                              'Ruang membaca pribadi Kamu',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: secondaryText,
@@ -624,50 +769,37 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                       ),
-                      IconButton(
-                        tooltip: 'Profil',
-                        onPressed: _openProfile,
-                        icon: const Icon(
-                          Icons.account_circle_outlined,
-                          color: primaryBlue,
-                          size: 30,
+                      InkWell(
+                        onTap: _openProfile,
+                        borderRadius: BorderRadius.circular(radiusSm),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: softPurple,
+                            borderRadius: BorderRadius.circular(radiusSm),
+                          ),
+                          child: const Icon(
+                            Icons.person_rounded,
+                            color: primaryPurple,
+                            size: 22,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: spacingLg),
 
-                  // Sambutan
-                  const Text(
-                    'Halo, pembaca! 👋',
-                    style: TextStyle(
-                      fontSize: 27,
-                      fontWeight: FontWeight.bold,
-                      color: darkText,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Buku baru, wawasan baru. Mulai perjalananmu hari ini.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: secondaryText,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-
-                  // Banner utama
+                  // ─── Greeting Banner ──────────────────────────────────────
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(22),
+                    padding: const EdgeInsets.all(spacingMd + 4),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF2563EB), Color(0xFF60A5FA)],
+                        colors: [primaryPurple, deepPurple],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(radiusLg),
                     ),
                     child: Row(
                       children: [
@@ -678,10 +810,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
-                                  vertical: 5,
+                                  vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
+                                  color: Colors.white.withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: const Text(
@@ -690,111 +822,161 @@ class _HomeScreenState extends State<HomeScreen> {
                                     color: Colors.white,
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    letterSpacing: 1,
+                                    letterSpacing: 1.2,
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 14),
-                              const Text(
-                                'Satu buku,\nbanyak kemungkinan.',
-                                style: TextStyle(
+                              const SizedBox(height: 12),
+                              Text(
+                                greeting,
+                                style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 23,
-                                  height: 1.25,
+                                  fontSize: 22,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 6),
                               const Text(
-                                'Temukan bacaan yang sesuai dengan minatmu.',
+                                'Perjalanan menuju masa depan mulai dari satu buku.\nMulai perjalananmu hari ini.',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12,
-                                  height: 1.5,
+                                  fontSize: 13,
+                                  height: 1.4,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 14),
                               FilledButton(
                                 onPressed: widget.onOpenCatalog,
                                 style: FilledButton.styleFrom(
                                   backgroundColor: Colors.white,
-                                  foregroundColor: primaryBlue,
+                                  foregroundColor: primaryPurple,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: spacingMd,
+                                    vertical: 10,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      radiusMd,
+                                    ),
+                                  ),
                                 ),
-                                child: const Text('Jelajahi Buku'),
+                                child: const Text(
+                                  'Jelajahi Buku',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        const Icon(
+                        const SizedBox(width: spacingSm),
+                        Icon(
                           Icons.auto_stories_rounded,
-                          color: Color(0xFFDCEBFF),
-                          size: 76,
+                          color: Colors.white.withValues(alpha: 0.25),
+                          size: 80,
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: spacingMd),
 
-                  // Target Bacaan
+                  // ─── Stats Summary ────────────────────────────────────────
+                  _buildStatsSummary(),
+                  const SizedBox(height: spacingMd),
+
+                  // ─── Reading Goal ─────────────────────────────────────────
+                  const Text(
+                    'Target Bacaan',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: darkText,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   _buildReadingGoal(),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: spacingMd),
 
-                  // Rekomendasi dari API
+                  // ─── Recommendations ──────────────────────────────────────
                   _buildRecommendations(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: spacingMd),
 
-                  // Ringkasan koleksi
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.bookmark_added_rounded,
-                          color: primaryBlue,
-                          size: 30,
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Koleksi bacaanmu',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: darkText,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${widget.savedBooks.length} buku tersimpan',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: secondaryText,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: widget.onOpenLibrary,
-                          icon: const Icon(Icons.arrow_forward_rounded),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // ─── Library Shortcut ─────────────────────────────────────
+                  _buildLibraryShortcut(),
+                  const SizedBox(height: spacingMd),
                 ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildLibraryShortcut() {
+    final count = widget.savedBooks.length;
+    return InkWell(
+      onTap: widget.onOpenLibrary,
+      borderRadius: BorderRadius.circular(radiusLg),
+      child: Container(
+        padding: const EdgeInsets.all(spacingMd),
+        decoration: BoxDecoration(
+          color: cardSurface,
+          borderRadius: BorderRadius.circular(radiusLg),
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: primaryPurple.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: softPurple,
+                borderRadius: BorderRadius.circular(radiusSm + 2),
+              ),
+              child: const Icon(
+                Icons.collections_bookmark_rounded,
+                color: primaryPurple,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Koleksi Bacaanmu',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: darkText,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    count == 0
+                        ? 'Belum ada buku tersimpan'
+                        : '$count buku tersimpan',
+                    style: const TextStyle(fontSize: 12, color: secondaryText),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: primaryPurple,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
