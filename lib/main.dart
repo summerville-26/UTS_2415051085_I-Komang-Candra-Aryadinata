@@ -11,6 +11,7 @@ import 'screens/book_catalog_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/my_library_screen.dart';
 import 'services/open_library_service.dart';
+import 'providers/reading_goal_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +39,9 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ReadingListProvider()),
+        ChangeNotifierProvider(
+          create: (_) => ReadingGoalProvider(client: Supabase.instance.client),
+        ),
         ChangeNotifierProvider(
           create: (_) => BookApiProvider(
             repository: BookRepository(service: OpenLibraryService()),
