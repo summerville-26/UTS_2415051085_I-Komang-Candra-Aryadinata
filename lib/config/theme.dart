@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 
 // Core palette
 const Color primaryPurple = Color(0xFF6C4AB6);
-const Color deepPurple = Color(0xFF493078);
-const Color softPurple = Color(0xFFEEE8FA);
-const Color lightLavender = Color(0xFFF6F2FC);
+const Color deepPurple = Color.fromARGB(255, 99, 61, 170);
+const Color softPurple = Color.fromARGB(255, 180, 146, 248);
+const Color lightLavender = Color.fromARGB(255, 223, 204, 255);
 const Color pageBackground = Color(0xFFFAF9FC);
 const Color cardSurface = Color(0xFFFFFFFF);
 

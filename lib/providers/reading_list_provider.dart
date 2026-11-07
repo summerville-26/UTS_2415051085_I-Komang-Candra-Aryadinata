@@ -6,25 +6,44 @@ import '../models/saved_book.dart';
 
 /// Mengelola daftar bacaan yang disimpan di Supabase.
 class ReadingListProvider extends ChangeNotifier {
-  ReadingListProvider() {
-    loadBooks();
+  /// Constructor utama untuk aplikasi.
+  ReadingListProvider() : this._(Supabase.instance.client, autoLoad: true);
+
+  /// Constructor khusus untuk widget testing.
+  ReadingListProvider.forTesting() : this._(null, autoLoad: false);
+
+  ReadingListProvider._(this._client, {required bool autoLoad}) {
+    if (autoLoad) {
+      loadBooks();
+    }
   }
 
-  final SupabaseClient _client = Supabase.instance.client;
+  final SupabaseClient? _client;
   final List<SavedBook> _savedBooks = [];
 
   bool _isLoading = false;
   String? _errorMessage;
+
+  /// Memastikan Supabase client tersedia.
+  SupabaseClient get _supabase {
+    if (_client == null) {
+      throw StateError('Supabase client tidak tersedia pada mode testing.');
+    }
+
+    return _client;
+  }
 
   List<SavedBook> get savedBooks => List.unmodifiable(_savedBooks);
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
   String get _userId {
-    final user = _client.auth.currentUser;
+    final user = _supabase.auth.currentUser;
+
     if (user == null) {
       throw StateError('Sesi pengguna Supabase belum tersedia.');
     }
+
     return user.id;
   }
 
@@ -35,7 +54,7 @@ class ReadingListProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _client
+      final response = await _supabase
           .from('saved_books')
           .select()
           .eq('user_id', _userId)
@@ -65,6 +84,7 @@ class ReadingListProvider extends ChangeNotifier {
       if (book.openLibraryKey != null && book.openLibraryKey!.isNotEmpty) {
         return item.openLibraryKey == book.openLibraryKey;
       }
+
       return item.title.trim().toLowerCase() == book.title.trim().toLowerCase();
     });
   }
@@ -75,6 +95,7 @@ class ReadingListProvider extends ChangeNotifier {
       if (book.openLibraryKey != null && book.openLibraryKey!.isNotEmpty) {
         return item.openLibraryKey == book.openLibraryKey;
       }
+
       return item.title.trim().toLowerCase() == book.title.trim().toLowerCase();
     });
 
@@ -116,6 +137,7 @@ class ReadingListProvider extends ChangeNotifier {
 
       if (existingIndex >= 0) {
         final existing = _savedBooks[existingIndex];
+
         final updated = SavedBook(
           id: existing.id,
           title: savedBook.title,
@@ -131,6 +153,7 @@ class ReadingListProvider extends ChangeNotifier {
           createdAt: existing.createdAt,
           completedAt: savedBook.completedAt,
         );
+
         await updateBook(updated);
         return;
       }
@@ -144,8 +167,9 @@ class ReadingListProvider extends ChangeNotifier {
     }
   }
 
+  /// Memasukkan buku baru ke Supabase.
   Future<void> _insertBook(SavedBook book) async {
-    final row = await _client
+    final row = await _supabase
         .from('saved_books')
         .insert(book.toInsertJson(_userId))
         .select()
@@ -160,7 +184,7 @@ class ReadingListProvider extends ChangeNotifier {
   /// Memperbarui buku berdasarkan ID Supabase.
   Future<void> updateBook(SavedBook updatedBook) async {
     try {
-      final row = await _client
+      final row = await _supabase
           .from('saved_books')
           .update(updatedBook.toUpdateJson())
           .eq('id', updatedBook.id)
@@ -197,13 +221,14 @@ class ReadingListProvider extends ChangeNotifier {
   /// Menghapus buku berdasarkan ID Supabase.
   Future<void> deleteBook(String id) async {
     try {
-      await _client
+      await _supabase
           .from('saved_books')
           .delete()
           .eq('id', id)
           .eq('user_id', _userId);
 
       _savedBooks.removeWhere((item) => item.id == id);
+
       _errorMessage = null;
       notifyListeners();
     } catch (error, stackTrace) {

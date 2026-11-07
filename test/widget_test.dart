@@ -28,7 +28,9 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider(create: (_) => ReadingListProvider()),
+          ChangeNotifierProvider(
+            create: (_) => ReadingListProvider.forTesting(),
+          ),
           ChangeNotifierProvider(
             create: (_) => BookApiProvider(repository: FakeBookRepository()),
           ),
@@ -37,7 +39,7 @@ void main() {
       ),
     );
 
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('BookNest'), findsOneWidget);
     expect(find.textContaining('Halo, pembaca!'), findsOneWidget);
